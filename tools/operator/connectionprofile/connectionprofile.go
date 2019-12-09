@@ -36,24 +36,26 @@ func (c ConnProfile) Organization(peerorg networkspec.PeerOrganizations, caList 
 		return organization, err
 	}
 	organization = networkspec.Organization{Name: orgName, MSPID: peerorg.MSPID}
-	organization.AdminPrivateKey.Pem = cert
 	organization.SignedCert.Pem = cert
+	organization.AdminCert = cert
 	organization.CertificateAuthorities = append(organization.CertificateAuthorities, caList...)
 	for peer := range c.Peers {
 		peerList = append(peerList, peer)
 	}
-	adminCertPath := paths.JoinPath(peerOrgsLocation, fmt.Sprintf("%s/users/Admin@%s/msp/signcerts/Admin@%s-cert.pem", orgName, orgName, orgName))
-	cert, err = c.GetCertificateFromFile(adminCertPath)
+
+	keystorePath := paths.JoinPath(peerOrgsLocation, fmt.Sprintf("%s/users/Admin@%s/msp/keystore", orgName, orgName))
+
+	privKeyFile, err := ioutil.ReadDir(keystorePath)
 	if err != nil {
 		return organization, err
 	}
-	organization.AdminCert = cert
-	privKeyPath := paths.JoinPath(peerOrgsLocation, fmt.Sprintf("%s/users/Admin@%s/msp/keystore/priv_sk", orgName, orgName))
+	privKeyPath := paths.JoinPath(keystorePath, fmt.Sprintf("%s", privKeyFile[0].Name()))
 	cert, err = c.GetCertificateFromFile(privKeyPath)
 	if err != nil {
 		return organization, err
 	}
 	organization.PrivateKey = cert
+	organization.AdminPrivateKey.Pem = cert
 	organization.Peers = append(organization.Peers, peerList...)
 	return organization, err
 }

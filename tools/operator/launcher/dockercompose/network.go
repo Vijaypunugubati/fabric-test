@@ -1,11 +1,14 @@
 package dockercompose
 
 import (
-	"github.com/hyperledger/fabric-test/tools/operator/networkclient"
+	"strings"
+
 	"github.com/hyperledger/fabric-test/tools/operator/launcher/nl"
 	"github.com/hyperledger/fabric-test/tools/operator/logger"
+	"github.com/hyperledger/fabric-test/tools/operator/networkclient"
 	"github.com/hyperledger/fabric-test/tools/operator/networkspec"
 	"github.com/hyperledger/fabric-test/tools/operator/paths"
+	"github.com/pkg/errors"
 )
 
 type DockerCompose struct {
@@ -59,7 +62,33 @@ func (d DockerCompose) DownLocalNetwork(config networkspec.Config) error {
 	if err != nil {
 		return err
 	}
+	err = d.removeChainCodeContainersAndImages()
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func (d DockerCompose) removeChainCodeContainersAndImages() error {
+
+	var err error
+	dockerList := []string{"ps", "-aq", "-f", "status=exited"}
+	containerList, _ := networkclient.ExecuteCommand("docker", dockerList, false)
+	if containerList != "" {
+		list := strings.Split(containerList, "\n")
+		containerArgs := []string{"rm", "-f"}
+		containerArgs = append(containerArgs, list...)
+		_, err = networkclient.ExecuteCommand("docker", containerArgs, true)
+	}
+	ccimagesList := []string{"images", "-q", "--filter=reference=dev*"}
+	images, _ := networkclient.ExecuteCommand("docker", ccimagesList, false)
+	if images != "" {
+		list := strings.Split(images, "\n")
+		imageArgs := []string{"rmi", "-f"}
+		imageArgs = append(imageArgs, list...)
+		_, err = networkclient.ExecuteCommand("docker", imageArgs, true)
+	}
+	return err
 }
 
 //DockerNetwork --
@@ -105,7 +134,7 @@ func (d DockerCompose) DockerNetwork(action string) error {
 			return err
 		}
 	default:
-		logger.CRIT(nil, "Incorrect action ", action, " Use up or down for action")
+		return errors.Errorf("Incorrect action %s Use up or down for action", action)
 	}
 	return nil
 }

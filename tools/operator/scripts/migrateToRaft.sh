@@ -3,7 +3,7 @@
 echo $#
 if [ $# != 6 ]; then
   echo "Invalid number of arguments. Usage:"
-  echo "./migrateToRaft.sh <kubeconfig path> <MSPID> <artifacts_location> <orderer_organizations list> <num_orderer in each org> <num_channels>"
+  echo "./migrateToRaft.sh <kubeconfig path> <MSPID> <artifactsLocation> <ordererOrganizations list> <numOrderer in each org> <numChannels>"
   exit 1
 fi
 
@@ -18,6 +18,10 @@ NUM_CHANNELS=$6
 ORDERERS=()
 CONSENTERS=()
 CHANNELS=("orderersystemchannel")
+PORT=30000
+if [[ "$ARTIFACTS_LOCATION" == */ ]]; then
+  ARTIFACTS_LOCATION="${ARTIFACTS_LOCATION::-1}"
+fi
 
 for j in ${!ORDERER_ORGS[@]}
 do
@@ -26,7 +30,8 @@ do
     ORDERER_NAME="orderer$i-${ORDERER_ORGS[$j]}"
     ORDERERS+=($ORDERER_NAME)
     ORDERER_CERT=$(base64 $ARTIFACTS_LOCATION/crypto-config/ordererOrganizations/${ORDERER_ORGS[$j]}/orderers/$ORDERER_NAME.${ORDERER_ORGS[$j]}/tls/server.crt | tr -d '\n')
-    CONSENTERS+=({'"client_tls_cert":"'$ORDERER_CERT'","host":"'$ORDERER_NAME'","port":7050,"server_tls_cert":"'$ORDERER_CERT'"'})
+    CONSENTERS+=({'"client_tls_cert":"'$ORDERER_CERT'","host":"'$ORDERER_NAME'","port":'$PORT',"server_tls_cert":"'$ORDERER_CERT'"'})
+    PORT=$((PORT+1))
   done
 done
 
@@ -84,7 +89,7 @@ done
 
 kubectl --kubeconfig=$KUBECONFIG apply -f $PWD/../configFiles/fabric-k8s-pods.yaml
 
-sleep 120
+sleep 180s
 
 for i in ${CHANNELS[*]}
 do

@@ -12,6 +12,7 @@
 #   - svt-daily                - clones fabric, pulls the images, binaries from Nexus and runs the daily
 #                              test suite. NOT USED?
 #   - svt-smoke                - pulls the images, binaries from Nexus and runs the smoke tests. NOT USED?
+#   - k8s-sys-test             - Triggers system tests on k8s cluster
 #   - build-docker-images      - builds fabric & ca docker images.
 #   - build-fabric             - builds fabric docker images and binaries.
 #   - build-fabric-ca          - builds fabric-ca docker images and binaries.
@@ -22,22 +23,22 @@
 #   - daily-tests              - runs Daily Test Suite.
 #   - pull-images              - pull the images and binaries from Nexus.
 #   - javaenv                  - clone the fabric-chaincode-java repository and build the javaenv image.
-#   - svt-daily-behave-tests   - pulls the images, binaries from Nexus and runs the Behave feature tests.
 #   - svt-daily-pte-tests      - pulls the images, binaries from Nexus and runs the PTE Performance tests.
-#   - svt-daily-ote-tests      - clones fabric, pulls the images, runs the OTE test suite.
 #   - svt-daily-lte-tests      - pulls the images, runs the LTE test suite.
 #   - svt-daily-ca-tests       - pulls the images, runs the CA test suite.
 #   - svt-weekly-pte-12hr-test - pulls the images, binaries from Nexus and runs the weekly 12hr PTE test.
+#   - svt-weekly-pte-12hr-test-k8s -Test 12hr longrun test in k8s environment.
 #   - git-latest               - init git submodules to latest available commit.
 #   - git-init                 - init git submodules.
-#   - pre-setup                - installs node, govendor and behave pre-requisites.
+#   - pre-setup                - installs node and govendor.
 #   - pte                      - builds pte docker image
 #   - clean                    - cleans the docker containers and images.
+#   - gotools                  - installs go tools, such as: ginkgo, golint, goimports, gocov, govendor
 #
 # ------------------------------------------------------------------
 
-export BASE_VERSION=1.4.4
-export BASEIMAGE_RELEASE=0.4.16
+export BASE_VERSION=1.4.5
+export BASEIMAGE_RELEASE=0.4.18
 DOCKER_NS = hyperledger
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
 PROJECT_VERSION = $(BASE_VERSION)-$(EXTRA_VERSION)
@@ -46,7 +47,6 @@ FABRIC = https://github.com/hyperledger/fabric
 FABRIC_CA = https://github.com/hyperledger/fabric-ca
 FABRIC-CHAINCODE-JAVA = https://github.com/hyperledger/fabric-chaincode-java
 HYPERLEDGER_DIR = $(GOPATH)/src/github.com/hyperledger
-INSTALL_BEHAVE_DEPS = $(GOPATH)/src/github.com/hyperledger/fabric-test/scripts/install_behave.sh
 FABRIC_DIR = $(HYPERLEDGER_DIR)/fabric
 CA_DIR = $(HYPERLEDGER_DIR)/fabric-ca
 CHAINCODE-JAVA_DIR = $(HYPERLEDGER_DIR)/fabric-chaincode-java
@@ -55,12 +55,13 @@ PTE_IMAGE = $(DOCKER_NS)/fabric-pte
 TARGET = pte
 STABLE_TAG ?= $(ARCH)-$(BRANCH)-stable
 
+include gotools.mk
+
 .PHONY: ci-smoke
-ci-smoke: fabric pull-images pull-binaries pull-thirdparty-images build-sdk-wrapper smoke-tests
+ci-smoke: fabric pull-images pull-binaries pull-thirdparty-images smoke-tests
 
 .PHONY: git-latest
 git-latest:
-	cd $(HYPERLEDGER_DIR)/fabric-test/cello && git checkout master && git fetch origin master && git reset --hard FETCH_HEAD && git show-ref HEAD
 	cd $(HYPERLEDGER_DIR)/fabric-test/fabric && git checkout $(BRANCH) && git fetch origin $(BRANCH) && git reset --hard FETCH_HEAD && git show-ref HEAD
 	cd $(HYPERLEDGER_DIR)/fabric-test/fabric-ca && git checkout $(BRANCH) && git fetch origin $(BRANCH) && git reset --hard FETCH_HEAD && git show-ref HEAD
 	cd $(HYPERLEDGER_DIR)/fabric-test/fabric-samples && git checkout $(BRANCH) && git fetch origin $(BRANCH) && git reset --hard FETCH_HEAD && git show-ref HEAD
@@ -71,12 +72,11 @@ git-init:
 	@git submodule update --init --recursive
 
 .PHONY: pre-setup
-pre-setup:
+pre-setup:  gotools
 	@bash $(PRE_SETUP)
-#	@bash $(INSTALL_BEHAVE_DEPS)
 
 .PHONY: ci-daily
-ci-daily: fabric pull-images pull-binaries pull-thirdparty-images build-sdk-wrapper daily-tests
+ci-daily: fabric pull-images pull-binaries pull-thirdparty-images daily-tests
 
 .PHONY: fabric
 fabric:
@@ -107,7 +107,7 @@ build-sdk-wrapper:
 	cd $(HYPERLEDGER_DIR)/fabric-test/feature/sdk/java && ./package.sh
 
 .PHONY: pull-thirdparty-images
-pull-thirdparty-images:
+pull-thirdparty-images: gotools
 	cd $(HYPERLEDGER_DIR)/fabric-test/scripts && ./pullDockerImages.sh third-party
 
 .PHONY: ca
@@ -135,12 +135,12 @@ javaenv: fabric-chaincode-java
 	@cd $(CHAINCODE-JAVA_DIR) && ./gradlew buildimage
 
 .PHONY: smoke-tests
-smoke-tests:
+smoke-tests: gotools
 	cd $(HYPERLEDGER_DIR)/fabric-test/regression/smoke && ./runSmokeTestSuite.sh
 
 .PHONY: daily-tests
 daily-tests:
-	cd $(HYPERLEDGER_DIR)/fabric-test/regression/daily && ./runBehaveTestSuite.sh; ./runPteTestSuite.sh; ./runOteTestSuite.sh; ./runLteTestSuite.sh; ./runCATestSuite.sh
+	cd $(HYPERLEDGER_DIR)/fabric-test/regression/daily && ./runPteTestSuite.sh; ./runOteTestSuite.sh; ./runLteTestSuite.sh; ./runCATestSuite.sh
 
 .PHONY: interop-tests
 interop-tests:
@@ -183,31 +183,23 @@ pull-fabric-javaenv:
 	cd $(HYPERLEDGER_DIR)/fabric-test/scripts && ./pullDockerImages.sh fabric-javaenv
 
 .PHONY: interop-fabric
-interop-fabric: pull-thirdparty-images build-fabric pull-binaries-fabric-ca build-fabric-ca pull-fabric-javaenv build-sdk-wrapper interop-tests
+interop-fabric: pull-thirdparty-images build-fabric pull-binaries-fabric-ca build-fabric-ca pull-fabric-javaenv interop-tests
 
 .PHONY: interop-fabric-ca
-interop-fabric-ca: pull-thirdparty-images pull-fabric pull-binaries-fabric build-fabric-ca pull-fabric-javaenv build-sdk-wrapper interop-tests
+interop-fabric-ca: pull-thirdparty-images pull-fabric pull-binaries-fabric build-fabric-ca pull-fabric-javaenv interop-tests
 
 .PHONY: interop-fabric-sdk-node
-interop-fabric-sdk-node: pull-thirdparty-images pull-binaries pull-fabric-ca pull-fabric-javaenv build-sdk-wrapper interop-tests
+interop-fabric-sdk-node: pull-thirdparty-images pull-binaries pull-fabric-ca pull-fabric-javaenv interop-tests
 
 .PHONY: interop-fabric-sdk-java
-interop-fabric-sdk-java: pull-thirdparty-images pull-binaries pull-fabric-ca pull-fabric-javaenv build-sdk-wrapper interop-tests
+interop-fabric-sdk-java: pull-thirdparty-images pull-binaries pull-fabric-ca pull-fabric-javaenv interop-tests
 
 .PHONY: interop-fabric-javaenv
-interop-fabric-javaenv: pull-thirdparty-images pull-binaries pull-fabric-ca javaenv build-sdk-wrapper interop-tests
-
-.PHONY: svt-daily-behave-tests
-svt-daily-behave-tests: fabric pull-images pull-binaries pull-thirdparty-images build-sdk-wrapper
-	cd $(HYPERLEDGER_DIR)/fabric-test/regression/daily && ./runBehaveTestSuite.sh
+interop-fabric-javaenv: pull-thirdparty-images pull-binaries pull-fabric-ca javaenv interop-tests
 
 .PHONY: svt-daily-pte-tests
 svt-daily-pte-tests: fabric pull-images pull-binaries pull-thirdparty-images
 	cd $(HYPERLEDGER_DIR)/fabric-test/regression/daily && ./runPteTestSuite.sh
-
-.PHONY: svt-daily-ote-tests
-svt-daily-ote-tests: fabric pull-images pull-binaries pull-thirdparty-images
-	cd $(HYPERLEDGER_DIR)/fabric-test/regression/daily && ./runOteTestSuite.sh
 
 .PHONY: svt-daily-lte-tests
 svt-daily-lte-tests:  fabric pull-binaries pull-thirdparty-images
@@ -222,11 +214,15 @@ svt-daily-ca-tests: pull-images pull-binaries build-fabric-ca
 svt-weekly-pte-12hr-test: fabric pull-images pull-binaries pull-thirdparty-images
 	cd $(HYPERLEDGER_DIR)/fabric-test/regression/weekly && ./run12HrTest.sh
 
+.PHONY: svt-weekly-pte-12hr-test-k8s
+svt-weekly-pte-12hr-test-k8s:
+	cd $(HYPERLEDGER_DIR)/fabric-test/regression/weekly && ./run12HrTest_k8s.sh
+
 .PHONY: svt-daily
-svt-daily: fabric pull-images pull-binaries pull-thirdparty-images build-sdk-wrapper daily-tests
+svt-daily: fabric pull-images pull-binaries pull-thirdparty-images daily-tests
 
 .PHONY: svt-smoke
-svt-smoke: fabric pull-images pull-binaries pull-thirdparty-images build-sdk-wrapper smoke-tests
+svt-smoke: fabric pull-images pull-binaries pull-thirdparty-images smoke-tests
 
 .PHONY: pte
 pte:
@@ -238,3 +234,6 @@ clean:
 	-docker ps -aq | xargs -I '{}' docker rm -f '{}' || true
 	@make docker-clean -C $(FABRIC_DIR) || true
 	@make docker-clean -C $(CA_DIR) || true
+.PHONY: k8s-sys-test
+k8s-sys-test:
+	cd $(HYPERLEDGER_DIR)/fabric-test/regression/systemtest && ./runk8ssystest.sh

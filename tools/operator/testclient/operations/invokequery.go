@@ -30,10 +30,12 @@ type InvokeQueryUIObject struct {
 	MixOpt          MixOptions            `json:"mixOpt,omitempty"`
 	ConstOpt        ConstantOptions       `json:"constantOpt,omitempty"`
 	EventOpt        EventOptions          `json:"eventOpt,omitempty"`
+	DiscoveryOpt    DiscoveryOptions      `json:"discoveryOpt,omitempty"`
 	CCType          string                `json:"ccType,omitempty"`
 	CCOpt           CCOptions             `json:"ccOpt,omitempty"`
 	Parameters      map[string]Parameters `json:"invoke,omitempty"`
 	ConnProfilePath string                `json:"ConnProfilePath,omitempty"`
+	TimeOutOpt      TimeOutOptions        `json:"timeoutOpt,timeoutOpt"`
 }
 
 //BurstOptions --
@@ -70,6 +72,12 @@ type CCOptions struct {
 	KeyStart   string `json:"keyStart,omitempty"`
 	PayLoadMin string `json:"payLoadMin,omitempty"`
 	PayLoadMax string `json:"payLoadMax,omitempty"`
+}
+
+//DiscoveryOptions --
+type DiscoveryOptions struct {
+	Localhost string `json:"localHost,omitempty"`
+	InitFreq  int `json:"initFreq,omitempty"`
 }
 
 //Parameters --
@@ -123,14 +131,19 @@ func (i InvokeQueryUIObject) createInvokeQueryObjectForOrg(orgName, action, tls 
 	i = InvokeQueryUIObject{LogLevel: "ERROR", InvokeCheck: invokeCheck, TransType: "Invoke", InvokeType: "Move", TargetPeers: invkQueryObject.TargetPeers, TLS: tls, NProcPerOrg: strconv.Itoa(invkQueryObject.NProcPerOrg), NRequest: strconv.Itoa(invkQueryObject.NRequest), RunDur: strconv.Itoa(invkQueryObject.RunDuration), CCType: invkQueryObject.CCOptions.CCType, ChaincodeID: invkQueryObject.ChaincodeName}
 	i.EventOpt = EventOptions{Type: invkQueryObject.EventOptions.Type, Listener: invkQueryObject.EventOptions.Listener, TimeOut: strconv.Itoa(invkQueryObject.EventOptions.TimeOut)}
 	i.CCOpt = CCOptions{KeyStart: strconv.Itoa(invkQueryObject.CCOptions.KeyStart), PayLoadMin: strconv.Itoa(invkQueryObject.CCOptions.PayLoadMin), PayLoadMax: strconv.Itoa(invkQueryObject.CCOptions.PayLoadMax)}
+	i.TimeOutOpt = TimeOutOptions{Request: invkQueryObject.TimeOutOpt.Request, PreConfig: invkQueryObject.TimeOutOpt.PreConfig}
+	if strings.EqualFold("DISCOVERY", invkQueryObject.TargetPeers) {
+		localHost := strings.ToUpper(strconv.FormatBool(invkQueryObject.DiscoveryOptions.Localhost))
+		i.DiscoveryOpt = DiscoveryOptions{Localhost: localHost, InitFreq: invkQueryObject.DiscoveryOptions.InitFreq}
+	}
 	if action == "Query" {
 		i.InvokeType = action
 		i.CCOpt = CCOptions{KeyStart: strconv.Itoa(invkQueryObject.CCOptions.KeyStart)}
 	}
 	i.ChannelOpt = ChannelOptions{Name: invkQueryObject.ChannelName, OrgName: []string{orgName}}
 	i.ConnProfilePath = paths.GetConnProfilePathForOrg(orgName, organizations)
-	invokeParams["move"] = Parameters{Fcn: "invoke", Args: strings.Split(invkQueryObject.Args, ",")}
-	invokeParams["query"] = Parameters{Fcn: "invoke", Args: strings.Split(invkQueryObject.Args, ",")}
+	invokeParams["move"] = Parameters{Fcn: invkQueryObject.Fcn, Args: strings.Split(invkQueryObject.Args, ",")}
+	invokeParams["query"] = Parameters{Fcn: invkQueryObject.Fcn, Args: strings.Split(invkQueryObject.Args, ",")}
 	i.Parameters = invokeParams
 	for key := range invkQueryObject.TxnOptions {
 		mode := invkQueryObject.TxnOptions[key].Mode

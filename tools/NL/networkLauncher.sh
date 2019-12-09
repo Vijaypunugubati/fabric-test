@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 #
 # Copyright IBM Corp. All Rights Reserved.
@@ -281,6 +281,7 @@ echo "        ####################################################### "
 echo "generate crypto ..."
 CRYPTOEXE=$BuildDir/cryptogen
 CRYPTOCFG=$CWD/crypto-config.yaml
+mkdir -p $MSPDir
 cd $MSPDir
 # remove existing crypto-config
 rm -rf crypto-config
@@ -326,7 +327,7 @@ fi
 cd $CWD
 echo "current working directory: $PWD"
 ordBlock=$ordererDir/orderer.block
-testChannel="testchannel"
+testChannel="orderersystemchannel"
 echo "$CFGEXE -profile $ORDERER_PROFILE -channelID $testChannel -outputBlock $ordBlock"
 $CFGEXE -profile $ORDERER_PROFILE -channelID $testChannel -outputBlock $ordBlock
 
@@ -372,7 +373,7 @@ do
                 orgMSP=$tmpVal
             fi
         fi
-        OrgMSP=$ordererDir"/"$testChannel"$j"$orgMSP"anchors.tx"
+        OrgMSP=$ordererDir"/"$ORG_PROFILE"$j"$orgMSP"anchors.tx"
         echo "$CFGEXE -profile $ORG_PROFILE -outputAnchorPeersUpdate $OrgMSP -channelID $ORG_PROFILE"$j" -asOrg $orgMSP"
         $CFGEXE -profile $ORG_PROFILE -outputAnchorPeersUpdate $OrgMSP -channelID $ORG_PROFILE"$j" -asOrg $orgMSP
     done

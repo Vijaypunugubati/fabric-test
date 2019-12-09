@@ -7,27 +7,23 @@
 SMOKEDIR="$GOPATH/src/github.com/hyperledger/fabric-test/regression/smoke"
 cd $SMOKEDIR
 
-echo "======== Behave feature and system tests ========"
-cd ../../feature
-behave --junit --junit-directory ../regression/smoke/. --tags=-skip --tags=smoke -k -D logs=y
-cd -
-
-echo "======== Ledger component performance tests using LTE ========"
-py.test -v --junitxml results_ledger_lte_smoke.xml ledger_lte_smoke.py
-
-echo "======== Orderer component test using OTE and NL tools ========"
-py.test -v --junitxml results_orderer_ote.xml orderer_ote.py
-
 echo "======== Performance Test using PTE and NL tools ========"
-cd $GOPATH/src/github.com/hyperledger/fabric-test/tools/PTE
-npm config set prefix ~/npm
-npm install
-if [ $? != 0 ]; then
-    echo "FAILED: Failed to install npm. Cannot run pte test suite."
-    # Don't exit.. Continue with tests, to show the PTE failure results
-else
-    echo "Successfully installed npm."
+cd $SMOKEDIR/../../tools/PTE
+if [ ! -d "node_modules" ];then
+    npm config set prefix ~/npm
+    npm install
+    if [ $? != 0 ]; then
+        echo "FAILED: Failed to install npm. Cannot run pte test suite."
+        # Don't exit.. Continue with tests, to show the PTE failure results
+    else
+        echo "Successfully installed npm."
+    fi
 fi
-cd $SMOKEDIR && py.test -v --junitxml results_systest_pte.xml systest_pte.py
 
+echo "======== Smoke Test Suite using ginkgo and operator tools ========"
+
+cd $SMOKEDIR && GO111MODULE=on ginkgo -v
+echo "======== Performance Test using PTE and NL tools ========"
+cd $SMOKEDIR/../daily && GO111MODULE=on ginkgo --focus test_FAB7929_8i
+echo "------> Smoke tests completed"
 

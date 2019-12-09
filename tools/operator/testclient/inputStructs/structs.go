@@ -2,16 +2,17 @@ package inputStructs
 
 //Config --
 type Config struct {
-	TLS              string          `yaml:"tls,omitempty"`
-	Organizations    []Organization  `yaml:"organizations,omitempty"`
-	CreateChannel    []Channel       `yaml:"createChannel,omitempty"`
-	AnchorPeerUpdate []Channel       `yaml:"anchorPeerUpdate,omitempty"`
-	JoinChannel      []Channel       `yaml:"joinChannel,omitempty"`
-	InstallCC        []InstallCC     `yaml:"installChaincode,omitempty"`
-	InstantiateCC    []InstantiateCC `yaml:"instantiateChaincode,omitempty"`
-	UpgradeCC        []InstantiateCC `yaml:"upgradeChaincode,omitempty"`
-	Invoke           []InvokeQuery   `yaml:"invokes,omitempty"`
-	Query            []InvokeQuery   `yaml:"queries,omitempty"`
+	TLS                  string          `yaml:"tls,omitempty"`
+	OrdererSystemChannel string          `yaml:"ordererSystemChannel,omitempty"`
+	Organizations        []Organization  `yaml:"organizations,omitempty"`
+	CreateChannel        []Channel       `yaml:"createChannel,omitempty"`
+	AnchorPeerUpdate     []Channel       `yaml:"anchorPeerUpdate,omitempty"`
+	JoinChannel          []Channel       `yaml:"joinChannel,omitempty"`
+	InstallCC            []InstallCC     `yaml:"installChaincode,omitempty"`
+	InstantiateCC        []InstantiateCC `yaml:"instantiateChaincode,omitempty"`
+	UpgradeCC            []InstantiateCC `yaml:"upgradeChaincode,omitempty"`
+	Invoke               []InvokeQuery   `yaml:"invokes,omitempty"`
+	Query                []InvokeQuery   `yaml:"queries,omitempty"`
 }
 
 //Channel --
@@ -46,6 +47,7 @@ type InstantiateCC struct {
 	ChainCodeName     string         `yaml:"chaincodeName,omitempty"`
 	ChainCodeVersion  string         `yaml:"ccVersion,omitempty"`
 	Organizations     string         `yaml:"organizations,omitempty"`
+	CCFcn             string         `yaml:"fcn,omitempty"`
 	CCFcnArgs         string         `yaml:"args,omitempty"`
 	EndorsementPolicy string         `yaml:"endorsementPolicy,omitempty"`
 	ChannelPrefix     string         `yaml:"channelPrefix,omitempty"`
@@ -62,18 +64,21 @@ type TimeOutOptions struct {
 
 //InvokeQuery --
 type InvokeQuery struct {
-	ChannelName   string               `yaml:"channelName,omitempty"`
-	ChaincodeName string               `yaml:"chaincodeName,omitempty"`
-	TargetPeers   string               `yaml:"targetPeers,omitempty"`
-	NProcPerOrg   int                  `yaml:"nProcPerOrg,omitempty"`
-	NRequest      int                  `yaml:"nRequest,omitempty"`
-	RunDuration   int                  `yaml:"runDur,omitempty"`
-	Organizations string               `yaml:"organizations,omitempty"`
-	TxnOptions    []TransactionOptions `yaml:"txnOpt,omitempty"`
-	QueryCheck    int                  `yaml:"queryCheck,omitempty"`
-	EventOptions  EventOptions         `yaml:"eventOpt,omitempty"`
-	CCOptions     CCOptions            `yaml:"ccOpt,omitempty"`
-	Args          string               `yaml:"args,omitempty"`
+	ChannelName      string               `yaml:"channelName,omitempty"`
+	ChaincodeName    string               `yaml:"chaincodeName,omitempty"`
+	TargetPeers      string               `yaml:"targetPeers,omitempty"`
+	NProcPerOrg      int                  `yaml:"nProcPerOrg,omitempty"`
+	NRequest         int                  `yaml:"nRequest,omitempty"`
+	RunDuration      int                  `yaml:"runDur,omitempty"`
+	Organizations    string               `yaml:"organizations,omitempty"`
+	TxnOptions       []TransactionOptions `yaml:"txnOpt,omitempty"`
+	QueryCheck       int                  `yaml:"queryCheck,omitempty"`
+	EventOptions     EventOptions         `yaml:"eventOpt,omitempty"`
+	CCOptions        CCOptions            `yaml:"ccOpt,omitempty"`
+	DiscoveryOptions DiscoveryOptions     `yaml:"discoveryOpt,omitempty"`
+	Fcn              string               `yaml:"fcn,omitempty"`
+	Args             string               `yaml:"args,omitempty"`
+	TimeOutOpt       TimeOutOptions       `yaml:"timeoutOpt,omitempty"`
 }
 
 //TransactionOptions --
@@ -106,4 +111,10 @@ type CCOptions struct {
 	KeyStart   int    `yaml:"keyStart,omitempty"`
 	PayLoadMin int    `yaml:"payLoadMin,omitempty"`
 	PayLoadMax int    `yaml:"payLoadMax,omitempty"`
+}
+
+//DiscoveryOptions --
+type DiscoveryOptions struct {
+	Localhost bool `yaml:"localHost,omitempty"`
+	InitFreq  int `yaml:"initFreq,omitempty"`
 }
